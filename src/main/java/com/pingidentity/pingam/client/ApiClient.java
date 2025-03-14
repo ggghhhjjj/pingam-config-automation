@@ -6,7 +6,6 @@ import com.pingidentity.pingam.config.ConfigProperties;
 import com.pingidentity.pingam.exception.ApiException;
 import com.pingidentity.pingam.model.ApiRequest;
 import com.pingidentity.pingam.model.ApiResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.*;
@@ -22,20 +21,36 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
 
-import static com.pingidentity.pingam.model.HttpMethod.*;
-
 /**
  * Generic API client for PingAm REST API interactions
  */
 @Slf4j
-@RequiredArgsConstructor
 public class ApiClient {
     private final ConfigProperties configProperties;
     private final ObjectMapper objectMapper;
     private final CloseableHttpClient httpClient;
 
+    // Cache configuration values that don't change
+    private final String baseUrl;
+    private final String apiVersion;
+
     public ApiClient(ConfigProperties configProperties) {
         this(configProperties, new ObjectMapper(), HttpClients.createDefault());
+    }
+
+    public ApiClient(ConfigProperties configProperties, ObjectMapper objectMapper, CloseableHttpClient httpClient) {
+        this.configProperties = configProperties;
+        this.objectMapper = objectMapper;
+        this.httpClient = httpClient;
+
+        // Initialize and cache configuration values once
+        this.baseUrl = configProperties.getProperty("api.baseUrl");
+        if (this.baseUrl == null || this.baseUrl.isEmpty()) {
+            throw new IllegalArgumentException("api.baseUrl is required in configuration");
+        }
+
+        this.apiVersion = configProperties.getProperty("api.version", "resource=2.0,protocol=1.0");
+        log.debug("Initialized API client with baseUrl: {}, apiVersion: {}", baseUrl, apiVersion);
     }
 
     /**
@@ -53,7 +68,7 @@ public class ApiClient {
 
             // Add common headers
             httpRequest.addHeader("Content-Type", "application/json");
-            httpRequest.addHeader("Accept-API-Version", configProperties.getProperty("api.version", "resource=2.0,protocol=1.0"));
+            httpRequest.addHeader("Accept-API-Version", apiVersion);
 
             // Add request-specific headers
             for (Map.Entry<String, String> entry : request.getHeaders().entrySet()) {
@@ -81,7 +96,6 @@ public class ApiClient {
     }
 
     private HttpUriRequest createHttpRequest(ApiRequest request) throws URISyntaxException, JsonProcessingException {
-        String baseUrl = configProperties.getProperty("api.baseUrl");
         String endpoint = resolvePropertyValue(request.getEndpoint());
 
         URIBuilder uriBuilder = new URIBuilder(baseUrl + endpoint);
