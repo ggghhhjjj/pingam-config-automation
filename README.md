@@ -54,15 +54,29 @@ api.password=yourPassword
 ### Running the Application
 
 ```bash
-java -jar target/pingam-config-automation-1.0-SNAPSHOT-jar-with-dependencies.jar config.properties
+java -jar target/pingam-config-automation-1.0-SNAPSHOT-jar-with-dependencies.jar --config=config.properties
 ```
 
-You can also specify a starting workflow step:
+Command-line options:
+
+- `--config`, `-c`: Path to the properties file (required)
+- `--start-step`, `-s`: The workflow step to start from (default: "authenticate")
+- `--verbose`, `-v`: Enable verbose output
+- `--help`, `-h`: Show help message
+- `--version`, `-V`: Show version information
+
+Examples:
 
 ```bash
-java -jar target/pingam-config-automation-1.0-SNAPSHOT-jar-with-dependencies.jar config.properties createRealm
-```
+# Basic usage with config file
+java -jar target/pingam-config-automation-1.0-SNAPSHOT-jar-with-dependencies.jar --config=config.properties
 
+# Start from a specific workflow step
+java -jar target/pingam-config-automation-1.0-SNAPSHOT-jar-with-dependencies.jar --config=config.properties --start-step=createRealm
+
+# Enable verbose mode
+java -jar target/pingam-config-automation-1.0-SNAPSHOT-jar-with-dependencies.jar --config=config.properties --verbose
+```
 ## Extending the Project
 
 ### Creating New API Requests/Responses
