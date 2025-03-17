@@ -2,6 +2,8 @@ package com.pingidentity.pingam.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.pingidentity.pingam.config.ConfigProperties;
 import com.pingidentity.pingam.exception.ApiException;
 import com.pingidentity.pingam.model.ApiRequest;
@@ -19,6 +21,7 @@ import org.apache.http.util.EntityUtils;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -113,14 +116,14 @@ public class ApiClient {
             case POST:
                 HttpPost post = new HttpPost(uri);
                 if (request.getBody() != null) {
-                    String jsonBody = objectMapper.writeValueAsString(request.getBody());
+                    String jsonBody = resolvePropertiesInJson(request.getBody());
                     post.setEntity(new StringEntity(jsonBody, ContentType.APPLICATION_JSON));
                 }
                 return post;
             case PUT:
                 HttpPut put = new HttpPut(uri);
                 if (request.getBody() != null) {
-                    String jsonBody = objectMapper.writeValueAsString(request.getBody());
+                    String jsonBody = resolvePropertiesInJson(request.getBody());
                     put.setEntity(new StringEntity(jsonBody, ContentType.APPLICATION_JSON));
                 }
                 return put;
@@ -129,12 +132,63 @@ public class ApiClient {
             case PATCH:
                 HttpPatch patch = new HttpPatch(uri);
                 if (request.getBody() != null) {
-                    String jsonBody = objectMapper.writeValueAsString(request.getBody());
+                    String jsonBody = resolvePropertiesInJson(request.getBody());
                     patch.setEntity(new StringEntity(jsonBody, ContentType.APPLICATION_JSON));
                 }
                 return patch;
             default:
                 throw new IllegalArgumentException("Unsupported HTTP method: " + request.getMethod());
+        }
+    }
+
+    /**
+     * Resolves property placeholders in the JSON request body
+     * @param body The request body object
+     * @return JSON string with resolved properties
+     */
+    private String resolvePropertiesInJson(Object body) throws JsonProcessingException {
+        // First convert the body to a JSON string
+        String jsonBody = objectMapper.writeValueAsString(body);
+
+        try {
+            // Parse the JSON
+            JsonNode rootNode = objectMapper.readTree(jsonBody);
+
+            // If it's an object node, resolve properties in all fields
+            if (rootNode.isObject()) {
+                resolvePropertiesInJsonNode((ObjectNode) rootNode);
+            }
+
+            // Convert back to string
+            return objectMapper.writeValueAsString(rootNode);
+        } catch (Exception e) {
+            // If any error occurs in the property resolution, fall back to the original JSON
+            log.warn("Error resolving properties in JSON: {}", e.getMessage());
+            return jsonBody;
+        }
+    }
+
+    /**
+     * Recursively resolves property placeholders in an ObjectNode
+     * @param node The node to process
+     */
+    private void resolvePropertiesInJsonNode(ObjectNode node) {
+        Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            String fieldName = entry.getKey();
+            JsonNode fieldValue = entry.getValue();
+
+            if (fieldValue.isTextual()) {
+                String textValue = fieldValue.asText();
+                if (textValue.contains("${")) {
+                    String resolvedValue = resolvePropertyValue(textValue);
+                    node.put(fieldName, resolvedValue);
+                }
+            } else if (fieldValue.isObject()) {
+                resolvePropertiesInJsonNode((ObjectNode) fieldValue);
+            }
+            // Could add handling for arrays if needed
         }
     }
 

@@ -1,16 +1,19 @@
 package com.pingidentity.pingam.client;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pingidentity.pingam.config.ConfigProperties;
 import com.pingidentity.pingam.exception.ApiException;
 import com.pingidentity.pingam.model.HttpMethod;
 import com.pingidentity.pingam.model.auth.AuthenticationRequest;
 import com.pingidentity.pingam.model.auth.AuthenticationResponse;
+import com.pingidentity.pingam.model.site.CreateSiteRequest;
 import org.apache.http.HttpEntity;
 import org.apache.http.StatusLine;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.methods.*;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.util.EntityUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,12 +21,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ApiClientTest {
@@ -72,7 +76,7 @@ class ApiClientTest {
         when(httpClient.execute(any(HttpUriRequest.class))).thenReturn(httpResponse);
 
         // Capture the entity content as a string
-        when(httpEntity.getContent()).thenReturn(new java.io.ByteArrayInputStream(responseJson.getBytes()));
+        when(httpEntity.getContent()).thenReturn(new ByteArrayInputStream(responseJson.getBytes()));
 
         // Test
         AuthenticationResponse response = apiClient.execute(request, AuthenticationResponse.class);
@@ -96,6 +100,54 @@ class ApiClientTest {
     }
 
     @Test
+    void testResolvePropertiesInRequestBody() throws IOException, ApiException {
+        // Setup
+        CreateSiteRequest request = (CreateSiteRequest) CreateSiteRequest.builder()
+                .endpoint("/json/global-config/sites")
+                .method(HttpMethod.POST)
+                .id("${site.id}")
+                .url("${site.url}")
+                .build()
+                .withHeader("iPlanetDirectoryPro", "${auth.token}")
+                .withQueryParam("_action", "create");
+
+        // Mock property resolution
+        when(configProperties.getProperty("site.id")).thenReturn("test-site-id");
+        when(configProperties.getProperty("site.url")).thenReturn("http://test-site-url.com");
+        when(configProperties.getProperty("auth.token")).thenReturn("test-token");
+
+        // Mock response setup
+        when(httpResponse.getStatusLine()).thenReturn(statusLine);
+        when(statusLine.getStatusCode()).thenReturn(200);
+        when(httpResponse.getEntity()).thenReturn(httpEntity);
+        when(httpClient.execute(any(HttpUriRequest.class))).thenReturn(httpResponse);
+        when(httpEntity.getContent()).thenReturn(new ByteArrayInputStream("{}".getBytes()));
+
+        // Execute request
+        apiClient.execute(request, com.pingidentity.pingam.model.site.CreateSiteResponse.class);
+
+        // Capture the HTTP request to verify body
+        ArgumentCaptor<HttpUriRequest> requestCaptor = ArgumentCaptor.forClass(HttpUriRequest.class);
+        verify(httpClient).execute(requestCaptor.capture());
+
+        HttpUriRequest capturedRequest = requestCaptor.getValue();
+        assertTrue(capturedRequest instanceof HttpPost);
+
+        // Extract and verify request body
+        HttpPost postRequest = (HttpPost) capturedRequest;
+        HttpEntity entity = postRequest.getEntity();
+        String requestBody = EntityUtils.toString(entity);
+
+        // Verify property placeholders were resolved in the body
+        assertTrue(requestBody.contains("\"_id\":\"test-site-id\""));
+        assertTrue(requestBody.contains("\"url\":\"http://test-site-url.com\""));
+        // Could add other assertions as needed
+
+        // Verify headers were also resolved
+        assertEquals("test-token", capturedRequest.getFirstHeader("iPlanetDirectoryPro").getValue());
+    }
+
+    @Test
     void testExecuteWithErrorResponse() throws IOException {
         // Setup
         AuthenticationRequest request =
@@ -110,7 +162,7 @@ class ApiClientTest {
         when(httpClient.execute(any(HttpUriRequest.class))).thenReturn(httpResponse);
 
         // Capture the entity content as a string
-        when(httpEntity.getContent()).thenReturn(new java.io.ByteArrayInputStream(errorJson.getBytes()));
+        when(httpEntity.getContent()).thenReturn(new ByteArrayInputStream(errorJson.getBytes()));
 
         // Test and verify exception
         ApiException exception = assertThrows(ApiException.class, () -> {
@@ -139,7 +191,7 @@ class ApiClientTest {
         when(httpClient.execute(any(HttpUriRequest.class))).thenReturn(httpResponse);
 
         // Capture the entity content as a string
-        when(httpEntity.getContent()).thenReturn(new java.io.ByteArrayInputStream(responseJson.getBytes()));
+        when(httpEntity.getContent()).thenReturn(new ByteArrayInputStream(responseJson.getBytes()));
 
         // Test
         apiClient.execute(request, AuthenticationResponse.class);
