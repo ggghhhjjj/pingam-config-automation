@@ -10,6 +10,8 @@ import com.pingidentity.pingam.model.realm.CreateRealmRequest;
 import com.pingidentity.pingam.model.realm.CreateRealmResponse;
 import com.pingidentity.pingam.model.realm.ListRealmsRequest;
 import com.pingidentity.pingam.model.realm.ListRealmsResponse;
+import com.pingidentity.pingam.model.site.CreateSiteRequest;
+import com.pingidentity.pingam.model.site.CreateSiteResponse;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -92,5 +94,23 @@ public class WorkflowStepFactory {
                 });
 
         workflowEngine.registerStep(createLdapStep);
+
+        // Create Site step
+        WorkflowStep<CreateSiteRequest, CreateSiteResponse> createSiteStep =
+                new WorkflowStep<>("createSite",
+                        CreateSiteRequest.createDefault(),
+                        CreateSiteResponse.class);
+
+        createSiteStep
+                .withSuccessHandler((response, props) -> {
+                    log.info("Site configuration created:");
+                    log.info("  Site ID: {}", response.getId());
+                    log.info("  Primary URL: {}", response.getUrl());
+                    if (response.getSecondaryURLs() != null && !response.getSecondaryURLs().isEmpty()) {
+                        log.info("  Secondary URLs: {}", String.join(", ", response.getSecondaryURLs()));
+                    }
+                });
+
+        workflowEngine.registerStep(createSiteStep);
     }
 }
