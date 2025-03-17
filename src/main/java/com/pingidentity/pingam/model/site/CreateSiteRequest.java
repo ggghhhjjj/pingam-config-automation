@@ -41,7 +41,7 @@ public class CreateSiteRequest extends ApiRequest {
         CreateSiteRequest request = (CreateSiteRequest) CreateSiteRequest.builder()
                 .endpoint("/json/global-config/sites")
                 .method(HttpMethod.POST)
-                .id("${site.id}")
+                .id("${site.id}") // This will be resolved at runtime, either from properties or derived from URL
                 .url("${site.url}")
                 .build()
                 .withHeader("iPlanetDirectoryPro", "${auth.token}")
