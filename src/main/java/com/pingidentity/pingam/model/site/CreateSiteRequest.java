@@ -3,6 +3,7 @@ package com.pingidentity.pingam.model.site;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.pingidentity.pingam.config.ConfigProperties;
 import com.pingidentity.pingam.model.ApiRequest;
 import com.pingidentity.pingam.model.HttpMethod;
 import lombok.AllArgsConstructor;
@@ -36,21 +37,21 @@ public class CreateSiteRequest extends ApiRequest {
     /**
      * Create a default site creation request
      */
-    public static CreateSiteRequest createDefault() {
+    public static CreateSiteRequest createDefault(ConfigProperties configProperties) {
         // Create a default request with base properties
         CreateSiteRequest request = (CreateSiteRequest) CreateSiteRequest.builder()
                 .endpoint("/json/global-config/sites")
                 .method(HttpMethod.POST)
-                .id("${site.id}") // This will be resolved at runtime, either from properties or derived from URL
-                .url("${site.url}")
+                .id(resolveSiteId(configProperties.getProperty("site.url")))
+                .url(configProperties.getProperty("site.url"))
                 .build()
-                .withHeader("iPlanetDirectoryPro", "${auth.token}")
+                .withHeader("iPlanetDirectoryPro", "${auth.token}") // This will be resolved at runtime,
                 .withHeader("Accept-API-Version", "protocol=1.0,resource=1.0")
                 .withQueryParam("_action", "create");
 
         // Handle secondary URLs separately to transform from a comma-separated property
         // to a list for the JSON request
-        request.setSecondaryURLsFromProperty("${site.secondaryUrls}");
+        request.setSecondaryURLsFromProperty(configProperties.getProperty("site.secondaryUrls"));
 
         return request;
     }
@@ -59,11 +60,27 @@ public class CreateSiteRequest extends ApiRequest {
      * Sets secondary URLs from a comma-separated property string
      * @param propertyValue A comma-separated list of URLs
      */
-    public void setSecondaryURLsFromProperty(String propertyValue) {
+    void setSecondaryURLsFromProperty(String propertyValue) {
         if (propertyValue != null && !propertyValue.isEmpty() && !propertyValue.equals("${site.secondaryUrls}")) {
             // Split by comma and create a list
             String[] urls = propertyValue.split(",");
             this.secondaryURLs = java.util.Arrays.asList(urls);
         }
+    }
+
+    private static String resolveSiteId(String url) {
+        // Remove protocol (http://, https://)
+        String result = url.replaceAll("^(http|https)://", "");
+
+        // Remove all non-alphanumeric characters
+        result = result.replaceAll("[^a-zA-Z0-9]", "");
+
+        // Limit length if needed (optional, adjust max length as appropriate)
+        final int maxLength = 30;
+        if (result.length() > maxLength) {
+            result = result.substring(0, maxLength);
+        }
+
+        return result;
     }
 }

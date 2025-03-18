@@ -1,5 +1,6 @@
 package com.pingidentity.pingam.workflow;
 
+import com.pingidentity.pingam.config.ConfigProperties;
 import com.pingidentity.pingam.model.auth.AuthenticationRequest;
 import com.pingidentity.pingam.model.auth.AuthenticationResponse;
 import com.pingidentity.pingam.model.site.CreateSiteRequest;
@@ -13,6 +14,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class WorkflowStepFactory {
 
+    private final ConfigProperties configProperties;
+
+    public WorkflowStepFactory(ConfigProperties configProperties) {
+        this.configProperties = configProperties;
+    }
+
     /**
      * Register all workflow steps with the workflow engine
      * @param workflowEngine The engine to register steps with
@@ -21,7 +28,7 @@ public class WorkflowStepFactory {
         // Authentication step
         WorkflowStep<AuthenticationRequest, AuthenticationResponse> authenticateStep =
                 new WorkflowStep<>("authenticate",
-                        AuthenticationRequest.createDefault(),
+                        AuthenticationRequest.createDefault(configProperties),
                         AuthenticationResponse.class);
 
         authenticateStep
@@ -33,7 +40,7 @@ public class WorkflowStepFactory {
         // Create Site step
         WorkflowStep<CreateSiteRequest, CreateSiteResponse> createSiteStep =
                 new WorkflowStep<>("createSite",
-                        CreateSiteRequest.createDefault(),
+                        CreateSiteRequest.createDefault(configProperties),
                         CreateSiteResponse.class);
 
         createSiteStep

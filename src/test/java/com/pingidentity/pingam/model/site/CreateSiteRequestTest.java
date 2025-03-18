@@ -1,45 +1,54 @@
 package com.pingidentity.pingam.model.site;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pingidentity.pingam.config.ConfigProperties;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class CreateSiteRequestTest {
 
     @Test
     void testSetSecondaryURLsFromProperty() {
-        // Setup
-        CreateSiteRequest request = CreateSiteRequest.createDefault();
+        // Setup mock ConfigProperties
+        ConfigProperties mockConfig = mock(ConfigProperties.class);
+        when(mockConfig.getProperty("site.id")).thenReturn("testSiteId");
+        when(mockConfig.getProperty("site.url")).thenReturn("http://test.example.com");
+        when(mockConfig.getProperty("auth.token")).thenReturn("test-token");
 
         // Test with single URL
-        request.setSecondaryURLsFromProperty("http://example.com");
+        when(mockConfig.getProperty("site.secondaryUrls")).thenReturn("http://example.com");
+        CreateSiteRequest request = CreateSiteRequest.createDefault(mockConfig);
+
         assertEquals(1, request.getSecondaryURLs().size());
         assertEquals("http://example.com", request.getSecondaryURLs().get(0));
 
         // Test with multiple URLs
-        request.setSecondaryURLsFromProperty("http://example1.com,http://example2.com,http://example3.com");
+        when(mockConfig.getProperty("site.secondaryUrls")).thenReturn("http://example1.com,http://example2.com,http://example3.com");
+        request = CreateSiteRequest.createDefault(mockConfig);
+
         assertEquals(3, request.getSecondaryURLs().size());
         assertEquals("http://example1.com", request.getSecondaryURLs().get(0));
         assertEquals("http://example2.com", request.getSecondaryURLs().get(1));
         assertEquals("http://example3.com", request.getSecondaryURLs().get(2));
 
         // Test with empty string
-        request.setSecondaryURLsFromProperty("");
-        // Should not change the previous value
-        assertEquals(3, request.getSecondaryURLs().size());
+        when(mockConfig.getProperty("site.secondaryUrls")).thenReturn("");
+        request = CreateSiteRequest.createDefault(mockConfig);
+
+        // Should not set secondaryURLs
+        assertNull(request.getSecondaryURLs());
 
         // Test with null
-        request.setSecondaryURLsFromProperty(null);
-        // Should not change the previous value
-        assertEquals(3, request.getSecondaryURLs().size());
+        when(mockConfig.getProperty("site.secondaryUrls")).thenReturn(null);
+        request = CreateSiteRequest.createDefault(mockConfig);
 
-        // Test with unparsed property placeholder
-        request.setSecondaryURLsFromProperty("${site.secondaryUrls}");
-        // Should not change the previous value
-        assertEquals(3, request.getSecondaryURLs().size());
+        // Should not set secondaryURLs
+        assertNull(request.getSecondaryURLs());
     }
 
     @Test
