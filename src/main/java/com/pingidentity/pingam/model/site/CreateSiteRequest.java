@@ -1,6 +1,5 @@
 package com.pingidentity.pingam.model.site;
 
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.pingidentity.pingam.config.ConfigProperties;
@@ -12,6 +11,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -54,6 +54,36 @@ public class CreateSiteRequest extends ApiRequest {
         request.setSecondaryURLsFromProperty(configProperties.getProperty("site.secondaryUrls"));
 
         return request;
+    }
+
+    @Override
+    public ApiRequest updatePlaceholders(ConfigProperties configProperties) {
+        // Call parent implementation to handle common fields
+        super.updatePlaceholders(configProperties);
+
+        // Update site-specific fields
+        if (id != null && id.contains("${")) {
+            id = resolvePlaceholders(id, configProperties);
+        }
+
+        if (url != null && url.contains("${")) {
+            url = resolvePlaceholders(url, configProperties);
+        }
+
+        // Update secondary URLs
+        if (secondaryURLs != null) {
+            List<String> updatedSecondaryURLs = new ArrayList<>();
+            for (String secondaryURL : secondaryURLs) {
+                if (secondaryURL != null && secondaryURL.contains("${")) {
+                    updatedSecondaryURLs.add(resolvePlaceholders(secondaryURL, configProperties));
+                } else {
+                    updatedSecondaryURLs.add(secondaryURL);
+                }
+            }
+            this.secondaryURLs = updatedSecondaryURLs;
+        }
+
+        return this;
     }
 
     /**

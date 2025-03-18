@@ -2,8 +2,6 @@ package com.pingidentity.pingam.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.pingidentity.pingam.config.ConfigProperties;
 import com.pingidentity.pingam.exception.ApiException;
 import com.pingidentity.pingam.model.ApiRequest;
@@ -21,7 +19,6 @@ import org.apache.http.util.EntityUtils;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -67,6 +64,9 @@ public class ApiClient {
      */
     public <T extends ApiResponse> T execute(ApiRequest request, Class<T> responseClass) throws ApiException {
         try {
+            // Update placeholders in the request before creating the HTTP request
+            request.updatePlaceholders(configProperties);
+
             HttpUriRequest httpRequest = createHttpRequest(request);
 
             // Add common headers
@@ -75,7 +75,7 @@ public class ApiClient {
 
             // Add request-specific headers
             for (Map.Entry<String, String> entry : request.getHeaders().entrySet()) {
-                httpRequest.addHeader(entry.getKey(), resolvePropertyValue(entry.getValue()));
+                httpRequest.addHeader(entry.getKey(), entry.getValue());
             }
 
             log.debug("Executing request: {} {}", httpRequest.getMethod(), httpRequest.getURI());
@@ -99,13 +99,12 @@ public class ApiClient {
     }
 
     private HttpUriRequest createHttpRequest(ApiRequest request) throws URISyntaxException, JsonProcessingException {
-        String endpoint = resolvePropertyValue(request.getEndpoint());
-
+        String endpoint = request.getEndpoint();
         URIBuilder uriBuilder = new URIBuilder(baseUrl + endpoint);
 
         // Add query parameters
         for (Map.Entry<String, String> entry : request.getQueryParams().entrySet()) {
-            uriBuilder.addParameter(entry.getKey(), resolvePropertyValue(entry.getValue()));
+            uriBuilder.addParameter(entry.getKey(), entry.getValue());
         }
 
         URI uri = uriBuilder.build();
@@ -116,14 +115,14 @@ public class ApiClient {
             case POST:
                 HttpPost post = new HttpPost(uri);
                 if (request.getBody() != null) {
-                    String jsonBody = resolvePropertiesInJson(request.getBody());
+                    String jsonBody = objectMapper.writeValueAsString(request.getBody());
                     post.setEntity(new StringEntity(jsonBody, ContentType.APPLICATION_JSON));
                 }
                 return post;
             case PUT:
                 HttpPut put = new HttpPut(uri);
                 if (request.getBody() != null) {
-                    String jsonBody = resolvePropertiesInJson(request.getBody());
+                    String jsonBody = objectMapper.writeValueAsString(request.getBody());
                     put.setEntity(new StringEntity(jsonBody, ContentType.APPLICATION_JSON));
                 }
                 return put;
@@ -132,63 +131,12 @@ public class ApiClient {
             case PATCH:
                 HttpPatch patch = new HttpPatch(uri);
                 if (request.getBody() != null) {
-                    String jsonBody = resolvePropertiesInJson(request.getBody());
+                    String jsonBody = objectMapper.writeValueAsString(request.getBody());
                     patch.setEntity(new StringEntity(jsonBody, ContentType.APPLICATION_JSON));
                 }
                 return patch;
             default:
                 throw new IllegalArgumentException("Unsupported HTTP method: " + request.getMethod());
-        }
-    }
-
-    /**
-     * Resolves property placeholders in the JSON request body
-     * @param body The request body object
-     * @return JSON string with resolved properties
-     */
-    private String resolvePropertiesInJson(Object body) throws JsonProcessingException {
-        // First convert the body to a JSON string
-        String jsonBody = objectMapper.writeValueAsString(body);
-
-        try {
-            // Parse the JSON
-            JsonNode rootNode = objectMapper.readTree(jsonBody);
-
-            // If it's an object node, resolve properties in all fields
-            if (rootNode.isObject()) {
-                resolvePropertiesInJsonNode((ObjectNode) rootNode);
-            }
-
-            // Convert back to string
-            return objectMapper.writeValueAsString(rootNode);
-        } catch (Exception e) {
-            // If any error occurs in the property resolution, fall back to the original JSON
-            log.warn("Error resolving properties in JSON: {}", e.getMessage());
-            return jsonBody;
-        }
-    }
-
-    /**
-     * Recursively resolves property placeholders in an ObjectNode
-     * @param node The node to process
-     */
-    private void resolvePropertiesInJsonNode(ObjectNode node) {
-        Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
-            String fieldName = entry.getKey();
-            JsonNode fieldValue = entry.getValue();
-
-            if (fieldValue.isTextual()) {
-                String textValue = fieldValue.asText();
-                if (textValue.contains("${")) {
-                    String resolvedValue = resolvePropertyValue(textValue);
-                    node.put(fieldName, resolvedValue);
-                }
-            } else if (fieldValue.isObject()) {
-                resolvePropertiesInJsonNode((ObjectNode) fieldValue);
-            }
-            // Could add handling for arrays if needed
         }
     }
 
@@ -198,33 +146,5 @@ public class ApiClient {
         } catch (IOException e) {
             throw new ApiException("Error deserializing response", e);
         }
-    }
-
-    /**
-     * Resolves property placeholders in values
-     * For example, ${api.username} will be replaced with the actual value from properties
-     */
-    private String resolvePropertyValue(String value) {
-        if (value == null || !value.contains("${")) {
-            return value;
-        }
-
-        String result = value;
-        int startIndex;
-        while ((startIndex = result.indexOf("${")) != -1) {
-            int endIndex = result.indexOf("}", startIndex);
-            if (endIndex == -1) {
-                break;
-            }
-
-            String placeholder = result.substring(startIndex + 2, endIndex);
-            String propertyValue = configProperties.getProperty(placeholder);
-
-            result = result.substring(0, startIndex) +
-                    (propertyValue != null ? propertyValue : "") +
-                    result.substring(endIndex + 1);
-        }
-
-        return result;
     }
 }

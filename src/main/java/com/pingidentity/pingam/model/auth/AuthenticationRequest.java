@@ -47,4 +47,21 @@ public class AuthenticationRequest extends ApiRequest {
         // Authentication request has an empty body since credentials go in headers
         return null;
     }
+
+    @Override
+    public ApiRequest updatePlaceholders(ConfigProperties configProperties) {
+        // Call parent implementation to handle common fields
+        super.updatePlaceholders(configProperties);
+
+        // Update username and password fields
+        if (username != null && username.contains("${")) {
+            username = resolvePlaceholders(username, configProperties);
+        }
+
+        if (password != null && password.contains("${")) {
+            password = resolvePlaceholders(password, configProperties);
+        }
+
+        return this;
+    }
 }
