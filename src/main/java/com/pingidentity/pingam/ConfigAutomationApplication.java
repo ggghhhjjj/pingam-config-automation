@@ -45,8 +45,15 @@ public class ConfigAutomationApplication {
     }
 
     private static WorkflowEngine getWorkflowEngine(ConfigurationParameters parameters) throws IOException {
+        // Load configuration properties
         ConfigProperties configProperties = new ConfigProperties();
         configProperties.loadFromFile(parameters.getConfigFilePath());
+
+        // Enable verbose logging if requested
+        if (parameters.isVerbose()) {
+            log.info("Verbose mode enabled");
+            // This would typically be handled by adjusting log levels in logback.xml dynamically
+        }
 
         // Create API client
         ApiClient apiClient = new ApiClient(configProperties);
@@ -54,9 +61,10 @@ public class ConfigAutomationApplication {
         // Create workflow engine
         WorkflowEngine workflowEngine = new WorkflowEngine(apiClient, configProperties);
 
-        // Register workflow steps using the factory
+        // Register workflow steps using the factory with modular providers
         WorkflowStepFactory stepFactory = new WorkflowStepFactory(configProperties);
         stepFactory.registerWorkflowSteps(workflowEngine);
+
         return workflowEngine;
     }
 }

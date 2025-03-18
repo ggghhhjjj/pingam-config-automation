@@ -1,23 +1,37 @@
 package com.pingidentity.pingam.workflow;
 
 import com.pingidentity.pingam.config.ConfigProperties;
-import com.pingidentity.pingam.model.auth.AuthenticationRequest;
-import com.pingidentity.pingam.model.auth.AuthenticationResponse;
-import com.pingidentity.pingam.model.site.CreateSiteRequest;
-import com.pingidentity.pingam.model.site.CreateSiteResponse;
+import com.pingidentity.pingam.workflow.provider.*;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Factory for creating and registering workflow steps
- * Responsible for defining the workflow structure
+ * Uses step providers to organize steps by domain
  */
 @Slf4j
 public class WorkflowStepFactory {
 
     private final ConfigProperties configProperties;
+    private final List<StepProvider> providers = new ArrayList<>();
 
     public WorkflowStepFactory(ConfigProperties configProperties) {
         this.configProperties = configProperties;
+        initializeProviders();
+    }
+
+    /**
+     * Initialize the list of step providers
+     */
+    private void initializeProviders() {
+        // Add all providers here
+        providers.add(new AuthenticationStepProvider(configProperties));
+        providers.add(new SiteStepProvider(configProperties));
+        providers.add(new RealmStepProvider(configProperties));
+
+        // Add additional providers as needed
     }
 
     /**
@@ -25,34 +39,13 @@ public class WorkflowStepFactory {
      * @param workflowEngine The engine to register steps with
      */
     public void registerWorkflowSteps(WorkflowEngine workflowEngine) {
-        // Authentication step
-        WorkflowStep<AuthenticationRequest, AuthenticationResponse> authenticateStep =
-                new WorkflowStep<>("authenticate",
-                        AuthenticationRequest.createDefault(configProperties),
-                        AuthenticationResponse.class);
+        log.info("Registering workflow steps from {} providers", providers.size());
 
-        authenticateStep
-                .withDataExtractor("auth.token", AuthenticationResponse::getTokenId)
-                .withDefaultNextStep("createRealm");
+        // Use each provider to register its steps
+        for (StepProvider provider : providers) {
+            provider.registerSteps(workflowEngine);
+        }
 
-        workflowEngine.registerStep(authenticateStep);
-
-        // Create Site step
-        WorkflowStep<CreateSiteRequest, CreateSiteResponse> createSiteStep =
-                new WorkflowStep<>("createSite",
-                        CreateSiteRequest.createDefault(configProperties),
-                        CreateSiteResponse.class);
-
-        createSiteStep
-                .withSuccessHandler((response, props) -> {
-                    log.info("Site configuration created:");
-                    log.info("  Site ID: {}", response.getId());
-                    log.info("  Primary URL: {}", response.getUrl());
-                    if (response.getSecondaryURLs() != null && !response.getSecondaryURLs().isEmpty()) {
-                        log.info("  Secondary URLs: {}", String.join(", ", response.getSecondaryURLs()));
-                    }
-                });
-
-        workflowEngine.registerStep(createSiteStep);
+        log.info("Workflow steps registration complete");
     }
 }
