@@ -130,7 +130,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>com.pingidentity.pingam.ConfigAutomationApplication</mainClass>
+              <mainClass>identity.am.automation.ConfigAutomationApplication</mainClass>
             </manifest>
           </archive>
           <descriptorRefs>
