@@ -71,6 +71,7 @@ public class ApiClient {
 
             // Add common headers
             httpRequest.addHeader("Content-Type", "application/json");
+            httpRequest.addHeader("Accept", "application/json");
             httpRequest.addHeader("Accept-API-Version", apiVersion);
 
             // Add request-specific headers
