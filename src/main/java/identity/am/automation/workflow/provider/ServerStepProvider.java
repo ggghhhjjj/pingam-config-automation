@@ -1,5 +1,7 @@
 package identity.am.automation.workflow.provider;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import identity.am.automation.config.ConfigProperties;
 import identity.am.automation.model.server.*;
 import identity.am.automation.workflow.WorkflowEngine;
@@ -18,6 +20,7 @@ import java.util.Map;
 public class ServerStepProvider implements StepProvider {
 
     private final ConfigProperties configProperties;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public void registerSteps(WorkflowEngine workflowEngine) {
@@ -72,9 +75,14 @@ public class ServerStepProvider implements StepProvider {
                     // Store the current site value
                     props.setRuntimeProperty("server.currentSiteValue", currentSiteValue);
 
-                    // Instead of storing the entire properties object, we'll just
-                    // keep a reference to it for the next step
-                    props.setRuntimeProperty("server.hasProperties", "true");
+                    // Store the entire properties map as JSON for the update request
+                    try {
+                        String propertiesJson = objectMapper.writeValueAsString(response.getProperties());
+                        props.setRuntimeProperty("server.properties.json", propertiesJson);
+                        log.debug("Stored server properties JSON for update");
+                    } catch (JsonProcessingException e) {
+                        log.error("Error serializing server properties: {}", e.getMessage());
+                    }
 
                     // Determine if an update is needed
                     String targetSiteId = props.getProperty("site.id");
@@ -97,7 +105,7 @@ public class ServerStepProvider implements StepProvider {
         // Create the step to update server properties
         WorkflowStep<UpdateServerPropertiesRequest, UpdateServerPropertiesResponse> updateServerPropertiesStep =
                 new WorkflowStep<>("updateServerProperties",
-                        createUpdateServerPropertiesRequest(),
+                        UpdateServerPropertiesRequest.createDefault(),
                         UpdateServerPropertiesResponse.class);
 
         updateServerPropertiesStep
@@ -111,33 +119,5 @@ public class ServerStepProvider implements StepProvider {
         workflowEngine.registerStep(updateServerPropertiesStep);
 
         log.info("Registered server workflow steps");
-    }
-
-    /**
-     * Create the update server properties request for a specific server
-     */
-    private UpdateServerPropertiesRequest createUpdateServerPropertiesRequest() {
-        return new UpdateServerPropertiesRequest() {
-            @Override
-            public UpdateServerPropertiesRequest updatePlaceholders(ConfigProperties configProperties) {
-                // First apply standard placeholder replacement
-                super.updatePlaceholders(configProperties);
-
-                // Get the site ID
-                String siteId = configProperties.getProperty("site.id");
-
-                // Create a simple structure with just the required fields to update
-                Map<String, Object> siteHeader = new HashMap<>();
-                siteHeader.put("singleChoiceSite", siteId);
-
-                Map<String, Object> requestProperties = new HashMap<>();
-                requestProperties.put("amconfig.header.site", siteHeader);
-
-                // Set the simple request properties
-                this.setProperties(requestProperties);
-
-                return this;
-            }
-        };
     }
 }
