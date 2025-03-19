@@ -183,9 +183,30 @@ public class ServerStepProvider implements StepProvider {
                     log.info("Updated LB cookie value: {}", response.getUpdatedLbCookieValue());
                     log.info("Updated replication port: {}", response.getUpdatedReplicationPort());
                 })
-                .withDefaultNextStep(WorkflowStep.END);  // End workflow after update
+                .withDefaultNextStep("cloneServer");  // End workflow if cloning is not enabled
 
         workflowEngine.registerStep(updateServerAdvancedPropertiesStep);
+
+        // Create the step to clone server
+        WorkflowStep<CloneServerRequest, CloneServerResponse> cloneServerStep =
+                new WorkflowStep<>("cloneServer",
+                        CloneServerRequest.createDefault(),
+                        CloneServerResponse.class);
+
+        cloneServerStep
+                .withSuccessHandler((response, props) -> {
+                    log.info("Successfully cloned server:");
+                    log.info("  Original server ID: {}", props.getProperty("server.id"));
+                    log.info("  Cloned server ID: {}", response.getClonedId());
+                    log.info("  Cloned server URL: {}", response.getClonedUrl());
+
+                    // Store the cloned server ID for potential future use
+                    props.setRuntimeProperty("server.cloned.id", response.getClonedId());
+                    props.setRuntimeProperty("server.cloned.url", response.getClonedUrl());
+                })
+                .withDefaultNextStep(WorkflowStep.END);
+
+        workflowEngine.registerStep(cloneServerStep);
 
         log.info("Registered server workflow steps");
     }
