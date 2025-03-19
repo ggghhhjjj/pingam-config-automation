@@ -98,7 +98,7 @@ public class ServerStepProvider implements StepProvider {
                 .withConditionalNextStep(
                         response -> "true".equals(configProperties.getProperty("server.propertiesUpdateNeeded")),
                         "updateServerProperties")
-                .withDefaultNextStep(WorkflowStep.END);  // End workflow if no update needed
+                .withDefaultNextStep("getServerAdvancedProperties");  // Changed to go to advanced properties step
 
         workflowEngine.registerStep(getServerPropertiesStep);
 
@@ -114,9 +114,78 @@ public class ServerStepProvider implements StepProvider {
                     log.info("Successfully updated server properties");
                     log.info("Updated site value: {}", updatedSiteValue);
                 })
-                .withDefaultNextStep(WorkflowStep.END);  // End workflow after update
+                .withDefaultNextStep("getServerAdvancedProperties");  // Changed to go to advanced properties step
 
         workflowEngine.registerStep(updateServerPropertiesStep);
+
+        // Create the step to get server advanced properties
+        WorkflowStep<GetServerAdvancedPropertiesRequest, GetServerAdvancedPropertiesResponse> getServerAdvancedPropertiesStep =
+                new WorkflowStep<>("getServerAdvancedProperties",
+                        GetServerAdvancedPropertiesRequest.createDefault(),
+                        GetServerAdvancedPropertiesResponse.class);
+
+        getServerAdvancedPropertiesStep
+                .withSuccessHandler((response, props) -> {
+                    // Log current advanced properties values
+                    Object currentLbCookieValue = response.getLbCookieValue();
+                    Object currentReplicationPort = response.getReplicationPort();
+                    log.info("Current LB cookie value: {}", currentLbCookieValue);
+                    log.info("Current replication port: {}", currentReplicationPort);
+
+                    // Store the advanced properties as JSON for the update request
+                    try {
+                        String propertiesJson = objectMapper.writeValueAsString(response.getProperties());
+                        props.setRuntimeProperty("server.advanced.properties.json", propertiesJson);
+                        log.debug("Stored server advanced properties JSON for update");
+                    } catch (JsonProcessingException e) {
+                        log.error("Error serializing server advanced properties: {}", e.getMessage());
+                    }
+
+                    // Determine required values
+                    String targetLbCookieValue = props.getProperty("server.lbcookie.value", "web1");
+                    String targetReplicationPort = props.getProperty("server.replication.port", "58989");
+
+                    // Determine if update is needed
+                    boolean lbCookieUpdateNeeded = !targetLbCookieValue.equals(String.valueOf(currentLbCookieValue));
+                    boolean replicationPortUpdateNeeded = !targetReplicationPort.equals(String.valueOf(currentReplicationPort));
+                    boolean updateNeeded = lbCookieUpdateNeeded || replicationPortUpdateNeeded;
+
+                    props.setRuntimeProperty("server.advancedPropertiesUpdateNeeded", String.valueOf(updateNeeded));
+
+                    if (updateNeeded) {
+                        log.info("Server advanced properties need to be updated:");
+                        if (lbCookieUpdateNeeded) {
+                            log.info("  - LB cookie value: {} -> {}", currentLbCookieValue, targetLbCookieValue);
+                        }
+                        if (replicationPortUpdateNeeded) {
+                            log.info("  - Replication port: {} -> {}", currentReplicationPort, targetReplicationPort);
+                        }
+                    } else {
+                        log.info("Server advanced properties already have correct values");
+                    }
+                })
+                .withConditionalNextStep(
+                        response -> "true".equals(configProperties.getProperty("server.advancedPropertiesUpdateNeeded")),
+                        "updateServerAdvancedProperties")
+                .withDefaultNextStep(WorkflowStep.END);  // End workflow if no update needed
+
+        workflowEngine.registerStep(getServerAdvancedPropertiesStep);
+
+        // Create the step to update server advanced properties
+        WorkflowStep<UpdateServerAdvancedPropertiesRequest, UpdateServerAdvancedPropertiesResponse> updateServerAdvancedPropertiesStep =
+                new WorkflowStep<>("updateServerAdvancedProperties",
+                        UpdateServerAdvancedPropertiesRequest.createDefault(),
+                        UpdateServerAdvancedPropertiesResponse.class);
+
+        updateServerAdvancedPropertiesStep
+                .withSuccessHandler((response, props) -> {
+                    log.info("Successfully updated server advanced properties");
+                    log.info("Updated LB cookie value: {}", response.getUpdatedLbCookieValue());
+                    log.info("Updated replication port: {}", response.getUpdatedReplicationPort());
+                })
+                .withDefaultNextStep(WorkflowStep.END);  // End workflow after update
+
+        workflowEngine.registerStep(updateServerAdvancedPropertiesStep);
 
         log.info("Registered server workflow steps");
     }
