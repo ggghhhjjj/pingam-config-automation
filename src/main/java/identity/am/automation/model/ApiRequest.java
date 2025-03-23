@@ -9,8 +9,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Base class for all API requests
@@ -75,35 +77,39 @@ public abstract class ApiRequest {
         }
 
         // Update headers
-        Map<String, String> updatedHeaders = new HashMap<>();
-        for (Map.Entry<String, String> entry : headers.entrySet()) {
-            String key = entry.getKey();
-            String value = entry.getValue();
-
-            if (value != null && value.contains("${")) {
-                value = resolvePlaceholders(value, configProperties);
-            }
-
-            updatedHeaders.put(key, value);
-        }
-        this.headers = updatedHeaders;
+        this.headers = headers.entrySet().stream()
+                .map(entry -> resolveEntryPlaceholder(entry, configProperties))
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue
+                ));
 
         // Update query parameters
-        Map<String, String> updatedQueryParams = new HashMap<>();
-        for (Map.Entry<String, String> entry : queryParams.entrySet()) {
-            String key = entry.getKey();
-            String value = entry.getValue();
-
-            if (value != null && value.contains("${")) {
-                value = resolvePlaceholders(value, configProperties);
-            }
-
-            updatedQueryParams.put(key, value);
-        }
-        this.queryParams = updatedQueryParams;
+        this.queryParams = queryParams.entrySet().stream()
+                .map(entry -> resolveEntryPlaceholder(entry, configProperties))
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue
+                ));
 
         return this;
     }
+
+    protected Map.Entry<String, String> resolveEntryPlaceholder(Map.Entry<String, String> entry, ConfigProperties configProperties) {
+        String key = entry.getKey();
+        String value = entry.getValue();
+
+        if (key != null && key.contains("${")) {
+            key = resolvePlaceholders(key, configProperties);
+        }
+
+        if (value != null && value.contains("${")) {
+            value = resolvePlaceholders(value, configProperties);
+        }
+
+        return new AbstractMap.SimpleEntry<>(key, value);
+    }
+
 
     /**
      * Helper method to resolve placeholders in a string

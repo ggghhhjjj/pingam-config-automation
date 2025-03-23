@@ -171,7 +171,7 @@ class RealmStepProviderTest {
         assertTrue(request.getAliases().contains("new.alias"));
 
         // Verify headers
-        assertEquals("${auth.token}", request.getHeaders().get("iPlanetDirectoryPro"));
+        assertEquals("${auth.token}", request.getHeaders().get("${api.auth.cookie.name}"));
         assertEquals("protocol=2.0,resource=1.0", request.getHeaders().get("Accept-API-Version"));
         assertEquals("application/json", request.getHeaders().get("Content-Type"));
     }

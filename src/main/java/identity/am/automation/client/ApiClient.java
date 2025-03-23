@@ -49,7 +49,7 @@ public class ApiClient {
             throw new IllegalArgumentException("api.baseUrl is required in configuration");
         }
 
-        this.apiVersion = configProperties.getProperty("api.version", "resource=2.0,protocol=1.0");
+        this.apiVersion = configProperties.getProperty("api.version");
         log.debug("Initialized API client with baseUrl: {}, apiVersion: {}", baseUrl, apiVersion);
     }
 

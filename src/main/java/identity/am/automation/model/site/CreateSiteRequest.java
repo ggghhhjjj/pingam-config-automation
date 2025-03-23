@@ -45,7 +45,7 @@ public class CreateSiteRequest extends ApiRequest {
                 .id(resolveSiteId(configProperties.getProperty("site.url")))
                 .url(configProperties.getProperty("site.url"))
                 .build()
-                .withHeader("iPlanetDirectoryPro", "${auth.token}") // This will be resolved at runtime,
+                .withHeader("${api.auth.cookie.name}", "${auth.token}") // This will be resolved at runtime,
                 .withHeader("Accept-API-Version", "protocol=1.0,resource=1.0")
                 .withQueryParam("_action", "create");
 

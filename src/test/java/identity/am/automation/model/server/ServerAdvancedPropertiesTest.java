@@ -32,6 +32,7 @@ class ServerAdvancedPropertiesTest {
         // Set up common mocks in lenient mode
         lenient().when(configProperties.getProperty("server.id")).thenReturn("server-1");
         lenient().when(configProperties.getProperty("auth.token")).thenReturn("test-token");
+        lenient().when(configProperties.getProperty("api.auth.cookie.name")).thenReturn("iPlanetDirectoryPro");
         lenient().when(configProperties.getProperty("server.lbcookie.value", "web1")).thenReturn("web1");
         lenient().when(configProperties.getProperty("server.replication.port", "58989")).thenReturn("58989");
     }
@@ -43,7 +44,7 @@ class ServerAdvancedPropertiesTest {
 
         // Verify the request properties
         assertEquals("/json/global-config/servers/${server.id}/properties/advanced", request.getEndpoint());
-        assertEquals("${auth.token}", request.getHeaders().get("iPlanetDirectoryPro"));
+        assertEquals("${auth.token}", request.getHeaders().get("${api.auth.cookie.name}"));
         assertEquals("protocol=1.0,resource=1.0", request.getHeaders().get("Accept-API-Version"));
 
         // Update placeholders

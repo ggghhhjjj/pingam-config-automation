@@ -24,7 +24,7 @@ public class GetServerAdvancedPropertiesRequest extends ApiRequest {
                 .endpoint("/json/global-config/servers/${server.id}/properties/advanced")
                 .method(HttpMethod.GET)
                 .build()
-                .withHeader("iPlanetDirectoryPro", "${auth.token}")
+                .withHeader("${api.auth.cookie.name}", "${auth.token}")
                 .withHeader("Accept-API-Version", "protocol=1.0,resource=1.0");
     }
 }

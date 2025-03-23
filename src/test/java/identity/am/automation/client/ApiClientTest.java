@@ -52,8 +52,6 @@ class ApiClientTest {
     void setUp() {
         // Common setup for mocks
         when(configProperties.resolveBaseUrl()).thenReturn("http://test-server:8080/sso");
-        when(configProperties.getProperty("api.version", "resource=2.0,protocol=1.0")).thenReturn("resource=2.0," +
-                "protocol=1.0");
 
         objectMapper = new ObjectMapper();
         apiClient = new ApiClient(configProperties, objectMapper, httpClient);

@@ -15,7 +15,7 @@ import java.util.Properties;
 @Slf4j
 public class ConfigProperties {
     private final Map<String, String> properties = new HashMap<>();
-    private Map<String, String> runtimeValues = new HashMap<>();
+    private final Map<String, String> runtimeValues = new HashMap<>();
 
     /**
      * Load properties from a file
@@ -29,10 +29,10 @@ public class ConfigProperties {
         try (InputStream input = new FileInputStream(filePath)) {
             props.load(input);
 
-            props.forEach((key, value) -> {
-                properties.put(key.toString(), value.toString());
-            });
+            props.forEach((key, value) -> properties.put(key.toString(), value.toString()));
         }
+
+        resolveDefaultValue();
 
         log.info("Loaded {} properties", properties.size());
     }
@@ -93,5 +93,12 @@ public class ConfigProperties {
 
     public String resolveBaseUrl() {
         return getProperty("api.baseUrl");
+    }
+
+    private void resolveDefaultValue() {
+        properties.put("api.auth.cookie.name", properties.getOrDefault("api.auth.cookie.name", "iPlanetDirectoryPro"));
+        properties.put("api.version", properties.getOrDefault("api.version", "resource=2.0,protocol=1.0"));
+        properties.put("server.lbcookie.value",  properties.getOrDefault("server.lbcookie.value", "web1"));
+        properties.put("server.replication.port",  properties.getOrDefault("server.replication.port", "58989"));
     }
 }

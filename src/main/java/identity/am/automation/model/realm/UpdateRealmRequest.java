@@ -49,7 +49,7 @@ public class UpdateRealmRequest extends ApiRequest {
                 .parentPath(parentPath != null ? parentPath : "")
                 .aliases(aliases)
                 .build()
-                .withHeader("iPlanetDirectoryPro", "${auth.token}")
+                .withHeader("${api.auth.cookie.name}", "${auth.token}")
                 .withHeader("Accept-API-Version", "protocol=2.0,resource=1.0")
                 .withHeader("Content-Type", "application/json");
     }

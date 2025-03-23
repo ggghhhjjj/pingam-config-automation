@@ -26,7 +26,8 @@ class CloneServerTest {
         // Set up common mocks in lenient mode
         lenient().when(configProperties.getProperty("server.id")).thenReturn("01");
         lenient().when(configProperties.getProperty("auth.token")).thenReturn("test-token");
-        lenient().when(configProperties.getProperty("server.clone.url")).thenReturn("http://web2.local:8080/sso");
+        lenient().when(configProperties.getProperty("api.auth.cookie.name")).thenReturn("iPlanetDirectoryPro");
+                lenient().when(configProperties.getProperty("server.clone.url")).thenReturn("http://web2.local:8080/sso");
     }
 
     @Test
@@ -36,7 +37,7 @@ class CloneServerTest {
 
         // Verify the request properties
         assertEquals("/json/global-config/servers/${server.id}", request.getEndpoint());
-        assertEquals("${auth.token}", request.getHeaders().get("iPlanetDirectoryPro"));
+        assertEquals("${auth.token}", request.getHeaders().get("${api.auth.cookie.name}"));
         assertEquals("protocol=1.0,resource=1.0", request.getHeaders().get("Accept-API-Version"));
         assertEquals("clone", request.getQueryParams().get("_action"));
         assertEquals("${server.clone.url}", request.getClonedUrl());

@@ -51,7 +51,7 @@ public class UpdateServerPropertiesRequest extends ApiRequest {
                 .endpoint("/json/global-config/servers/${server.id}/properties/general")
                 .method(HttpMethod.PUT)
                 .build()
-                .withHeader("iPlanetDirectoryPro", "${auth.token}")
+                .withHeader("${api.auth.cookie.name}", "${auth.token}")
                 .withHeader("Accept-API-Version", "protocol=1.0,resource=1.0");
 
         // Initialize the properties map to prevent NullPointerException

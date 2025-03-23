@@ -162,7 +162,7 @@ public class RealmStepProvider implements StepProvider {
                 this.setAliases(aliases);
 
                 // Add required headers
-                this.withHeader("iPlanetDirectoryPro", configProperties.getProperty("auth.token"));
+                this.withHeader("${api.auth.cookie.name}", configProperties.getProperty("auth.token"));
                 this.withHeader("Accept-API-Version", "protocol=2.0,resource=1.0");
 
                 return this;
